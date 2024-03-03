@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Base de datos SQL Server (Azure SQL Edge es compatible con ARM64)
+  sqlserver:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Password123!
+    ports:
+      - "1434:1433"  # Cambiado de 1433 a 1434 en el host
+    volumes:
+      - sql-data:/var/opt/mssql
+    networks:
+      - productos-network
+
+  # API ASP.NET Core
+  api:
+    build:
+      context: ./ProductosAPI.Core
+      dockerfile: Dockerfile
+    ports:
+      - "5001:80"
+    depends_on:
+      - sqlserver
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ProductosDB;User Id=sa;Password=Password123!;TrustServerCertificate=True
+      - JWT_SECRET_KEY=clave-secreta-api-productos-2024
+      - JWT_ISSUER_TOKEN=http://localhost:8081
+      - JWT_AUDIENCE_TOKEN=http://localhost:8081
+      - JWT_EXPIRE_MINUTES=120
+    networks:
+      - productos-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Servidor web Nginx
+  web:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./ProductosAPI/Frontend:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    networks:
+      - productos-network
+
+networks:
+  productos-network:
+    driver: bridge
+
+volumes:
+  sql-data:

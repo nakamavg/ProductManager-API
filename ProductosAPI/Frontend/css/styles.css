@@ -1,0 +1,29 @@
+/* Estilos personalizados para la aplicación */
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f1f5f9;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+}
+
+.table th {
+    font-weight: 600;
+    background-color: #f1f5f9;
+}
+
+.btn-group {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn {
+    margin: 0 3px;
+}
