@@ -16,17 +16,37 @@ namespace ProductosAPI.Core.Services
             _auditService = auditService;
         }
 
-        public async Task<ResultadoPaginadoDTO<ProductoDTO>> ObtenerProductosPaginadosAsync(PaginacionDTO paginacion)
+        public async Task<ResultadoPaginadoDTO<ProductoDTO>> ObtenerProductosPaginadosAsync(
+            PaginacionDTO paginacion, 
+            decimal? precioMinimo = null,
+            decimal? precioMaximo = null,
+            string? busqueda = null)
         {
-            // Filtrar solo productos activos
+            // Construir query base
             var query = _context.Productos.Where(p => p.Activo);
 
-            // Aplicar ordenamiento
+            // Aplicar filtros
+            if (precioMinimo.HasValue)
+                query = query.Where(p => p.Volumen >= precioMinimo.Value);
+
+            if (precioMaximo.HasValue)
+                query = query.Where(p => p.Volumen <= precioMaximo.Value);
+
+            if (!string.IsNullOrEmpty(busqueda))
+                query = query.Where(p => p.Nombre.Contains(busqueda));
+
+            // Aplicar ordenamiento dinámico
             query = paginacion.OrdenarPor.ToLower() switch
             {
                 "nombre" => paginacion.Ascendente ? 
                     query.OrderBy(p => p.Nombre) : 
                     query.OrderByDescending(p => p.Nombre),
+                "volumen" => paginacion.Ascendente ? 
+                    query.OrderBy(p => p.Volumen) : 
+                    query.OrderByDescending(p => p.Volumen),
+                "peso" => paginacion.Ascendente ? 
+                    query.OrderBy(p => p.Peso) : 
+                    query.OrderByDescending(p => p.Peso),
                 "fechacreacion" => paginacion.Ascendente ? 
                     query.OrderBy(p => p.FechaCreacion) : 
                     query.OrderByDescending(p => p.FechaCreacion),
@@ -35,11 +55,11 @@ namespace ProductosAPI.Core.Services
                     query.OrderByDescending(p => p.Id)
             };
 
-            // Obtener total de registros
+            // Calcular totales
             var totalRegistros = await query.CountAsync();
             var totalPaginas = (int)Math.Ceiling(totalRegistros / (double)paginacion.RegistrosPorPagina);
 
-            // Obtener página específica
+            // Obtener página específica con proyección optimizada
             var productos = await query
                 .Skip((paginacion.Pagina - 1) * paginacion.RegistrosPorPagina)
                 .Take(paginacion.RegistrosPorPagina)
