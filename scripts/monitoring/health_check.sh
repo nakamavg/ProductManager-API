@@ -1,78 +1,77 @@
 #!/bin/bash
 
-# Script de monitoreo de salud del sistema
-# Uso: ./health_check.sh [slack_webhook_url]
-
 # Configuración
-SLACK_WEBHOOK=${1:-""}
-API_URL="http://localhost:5001"
-NGINX_URL="http://localhost:8081"
-LOG_FILE="/var/log/health_check.log"
+API_URL="http://localhost:5001/health"
+DB_CONTAINER="productos-sqlserver"
+SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
+LOG_FILE="/var/log/productos/health_check.log"
 
-check_service() {
-    local service_name=$1
-    local url=$2
-    
-    echo "Verificando $service_name..."
-    if curl -f "$url/health" >/dev/null 2>&1; then
-        echo "✅ $service_name: OK"
+# Crear directorio de logs si no existe
+mkdir -p "$(dirname "$LOG_FILE")"
+
+log_message() {
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] $1" | tee -a "$LOG_FILE"
+}
+
+check_api_health() {
+    local response=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL")
+    if [ "$response" = "200" ]; then
+        log_message "API Health Check: OK"
         return 0
     else
-        echo "❌ $service_name: ERROR"
+        log_message "API Health Check: ERROR - Status code: $response"
         return 1
     fi
 }
 
-check_docker_services() {
-    echo "Verificando contenedores Docker..."
-    docker compose ps --format "table {{.Name}}\t{{.Status}}"
+check_db_health() {
+    local db_status=$(docker exec $DB_CONTAINER /opt/mssql-tools/bin/sqlcmd \
+        -U sa -P "Password123!" \
+        -Q "SELECT 1" -h -1 2>/dev/null)
+    
+    if [ $? -eq 0 ]; then
+        log_message "Database Health Check: OK"
+        return 0
+    else
+        log_message "Database Health Check: ERROR"
+        return 1
+    fi
 }
 
-check_resources() {
-    echo -e "\nUso de recursos:"
-    echo "CPU:"
-    top -l 1 | grep "CPU usage"
-    echo -e "\nMemoria:"
-    vm_stat
-    echo -e "\nDisco:"
-    df -h
+check_disk_space() {
+    local threshold=90
+    local usage=$(df -h / | tail -1 | awk '{print $5}' | cut -d'%' -f1)
+    
+    if [ "$usage" -lt "$threshold" ]; then
+        log_message "Disk Space Check: OK ($usage%)"
+        return 0
+    else
+        log_message "Disk Space Check: WARNING - High usage ($usage%)"
+        return 1
+    fi
 }
 
 send_alert() {
-    local message=$1
-    if [ -n "$SLACK_WEBHOOK" ]; then
-        curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"$message\"}" \
-            "$SLACK_WEBHOOK"
+    if [ -n "$SLACK_WEBHOOK_URL" ]; then
+        curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"🚨 Alert: $1\"}" \
+            "$SLACK_WEBHOOK_URL"
     fi
+    log_message "Alert sent: $1"
 }
 
 # Ejecutar verificaciones
-{
-    echo "=== Health Check $(date) ==="
-    
-    # Verificar servicios
-    check_service "API" "$API_URL"
-    API_STATUS=$?
-    
-    check_service "Web" "$NGINX_URL"
-    WEB_STATUS=$?
-    
-    # Verificar Docker
-    check_docker_services
-    
-    # Verificar recursos
-    check_resources
-    
-    # Enviar alertas si hay problemas
-    if [ $API_STATUS -ne 0 ] || [ $WEB_STATUS -ne 0 ]; then
-        send_alert "⚠️ Alerta: Problemas detectados en servicios"
-    fi
-    
-    echo "=== Fin Health Check ==="
-} | tee -a "$LOG_FILE"
+errors=0
 
-# Rotar log si es muy grande
-if [ -f "$LOG_FILE" ] && [ $(stat -f%z "$LOG_FILE") -gt 5000000 ]; then
-    mv "$LOG_FILE" "${LOG_FILE}.1"
+check_api_health || ((errors++))
+check_db_health || ((errors++))
+check_disk_space || ((errors++))
+
+# Enviar alerta si hay errores
+if [ $errors -gt 0 ]; then
+    send_alert "Se detectaron $errors problemas en el sistema. Revisar $LOG_FILE"
+    exit 1
 fi
+
+exit 0
