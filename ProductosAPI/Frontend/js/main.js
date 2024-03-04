@@ -183,4 +183,84 @@ $(document).ready(function() {
     $('#btnOrdenarFecha').click(function() {
         productosUI.cambiarOrden('FechaCreacion');
     });
+
+    // Configuración de filtros avanzados
+    $('#filtrosAvanzados').append(`
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="precioMinimo">Precio Mínimo</label>
+                <input type="number" class="form-control" id="precioMinimo" min="0">
+            </div>
+            <div class="col-md-3">
+                <label for="precioMaximo">Precio Máximo</label>
+                <input type="number" class="form-control" id="precioMaximo" min="0">
+            </div>
+            <div class="col-md-3">
+                <label for="categoriaFiltro">Categoría</label>
+                <select class="form-control" id="categoriaFiltro">
+                    <option value="">Todas</option>
+                    <option value="electronica">Electrónica</option>
+                    <option value="ropa">Ropa</option>
+                    <option value="hogar">Hogar</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>&nbsp;</label>
+                <button class="btn btn-primary w-100" id="aplicarFiltros">
+                    Aplicar Filtros
+                </button>
+            </div>
+        </div>
+    `);
+
+    // Evento para aplicar filtros
+    $('#aplicarFiltros').click(function() {
+        productosUI.aplicarFiltros();
+    });
+
+    // Añadir métodos de filtrado al objeto productosUI
+    Object.assign(productosUI, {
+        filtrosActuales: {
+            precioMinimo: null,
+            precioMaximo: null,
+            categoria: '',
+            busqueda: ''
+        },
+
+        aplicarFiltros: function() {
+            this.filtrosActuales = {
+                precioMinimo: $('#precioMinimo').val() || null,
+                precioMaximo: $('#precioMaximo').val() || null,
+                categoria: $('#categoriaFiltro').val(),
+                busqueda: $('#searchProductos').val()
+            };
+            this.paginaActual = 1;
+            this.cargarProductos();
+        },
+
+        limpiarFiltros: function() {
+            $('#precioMinimo').val('');
+            $('#precioMaximo').val('');
+            $('#categoriaFiltro').val('');
+            $('#searchProductos').val('');
+            this.filtrosActuales = {
+                precioMinimo: null,
+                precioMaximo: null,
+                categoria: '',
+                busqueda: ''
+            };
+            this.cargarProductos();
+        }
+    });
+
+    // Agregar botón para limpiar filtros
+    $('#filtrosContainer').append(`
+        <button class="btn btn-secondary" id="limpiarFiltros">
+            Limpiar Filtros
+        </button>
+    `);
+
+    $('#limpiarFiltros').click(function() {
+        productosUI.limpiarFiltros();
+    });
 });
