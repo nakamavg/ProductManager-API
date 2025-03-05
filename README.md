@@ -1,37 +1,55 @@
 # Proyecto de Gestión de Productos
 
-## Guía de Inicio Rápido
+## Pasos para Levantar el Proyecto
 
-### Requisitos Previos
-- Docker y Docker Compose
-- Git
+### 1. Requisitos Previos
+- Docker y Docker Compose instalados
+- Git instalado
+- Puertos disponibles:
+  - 8081 (Frontend)
+  - 5001 (API)
+  - 1434 (SQL Server)
 
-### Instalación y Ejecución
-
-1. Clonar el repositorio:
+### 2. Clonar el Repositorio
 ```bash
-git clone <url-repositorio>
-cd prueba
+git clone https://github.com/nakamavg/ProductManager-API.git
+cd ProductManager-API
 ```
 
-2. Iniciar los servicios:
+### 3. Configurar el Entorno
+El proyecto usa variables de entorno que ya están configuradas en el docker-compose.yml. Si necesitas personalizarlas, puedes modificar los siguientes valores:
+
+- JWT_SECRET_KEY
+- JWT_ISSUER_TOKEN
+- JWT_AUDIENCE_TOKEN
+- JWT_EXPIRE_MINUTES
+- ConnectionStrings__DefaultConnection
+
+### 4. Iniciar los Servicios
 ```bash
 docker compose up -d
 ```
 
-3. Verificar que los servicios estén funcionando:
+Este comando iniciará tres servicios:
+- Base de datos SQL Server (Azure SQL Edge)
+- API ASP.NET Core
+- Servidor web Nginx (Frontend)
+
+### 5. Verificar la Instalación
+Espera aproximadamente 30-60 segundos para que SQL Server se inicialice completamente y ejecuta:
 ```bash
 docker compose ps
 ```
 
-Los servicios estarán disponibles en:
-- Frontend: http://localhost:8081
-- API: http://localhost:5001
-- SQL Server: localhost:1434
+Deberías ver los tres servicios en estado "running".
 
-### Prueba Rápida
+### 6. Acceder a la Aplicación
 
-1. **Credenciales por defecto**:
+1. Frontend: http://localhost:8081
+2. API: http://localhost:5001
+3. Base de datos: localhost:1434
+
+### 7. Credenciales por Defecto
 
 Administrador:
 - Email: admin@test.com
@@ -41,17 +59,68 @@ Usuario regular:
 - Email: usuario@test.com
 - Password: usuario123
 
-2. **Probar API**:
-```bash
-# Obtener token (usando credenciales de admin)
-curl -X POST http://localhost:5001/api/auth/login \
--H "Content-Type: application/json" \
--d '{"email":"admin@test.com","password":"admin123"}'
+### 8. Verificar el Estado de los Servicios
 
-# Usar el token para obtener productos
-curl http://localhost:5001/api/productos \
--H "Authorization: Bearer {token-recibido}"
+Para ver los logs de los servicios:
+```bash
+# Todos los servicios
+docker compose logs
+
+# Servicio específico
+docker compose logs api
+docker compose logs sqlserver
+docker compose logs web
 ```
+
+### 9. Detener los Servicios
+```bash
+docker compose down
+```
+
+Para eliminar también los volúmenes (esto borrará los datos de la base de datos):
+```bash
+docker compose down -v
+```
+
+## Solución de Problemas Comunes
+
+### Error de Conexión a la Base de Datos
+1. Verifica que el puerto 1434 esté disponible
+2. Espera 30-60 segundos después de iniciar los contenedores
+3. Revisa los logs: `docker compose logs sqlserver`
+
+### Error al Acceder al Frontend
+1. Verifica que el puerto 8081 esté disponible
+2. Revisa los logs: `docker compose logs web`
+3. Asegúrate de que la API esté funcionando
+
+### Error en la API
+1. Verifica que el puerto 5001 esté disponible
+2. Revisa los logs: `docker compose logs api`
+3. Verifica la conexión con la base de datos
+
+## Monitoreo y Mantenimiento
+
+### Scripts de Mantenimiento
+Los scripts están en la carpeta `scripts/`:
+```bash
+# Ejecutar backup
+./scripts/maintenance/backup.sh
+
+# Verificar estado del sistema
+./scripts/monitoring/health_check.sh
+```
+
+### Logs del Sistema
+Los logs se almacenan en:
+- Logs de la API: `ProductosAPI/Logs/`
+- Logs de auditoría: `logs/audit/`
+
+## Documentación Adicional
+Para más información, consulta:
+- [API y Endpoints](docs/API.md)
+- [Arquitectura del Sistema](docs/ARQUITECTURA.md)
+- [Guía de Despliegue](docs/DEPLOYMENT.md)
 
 ## Documentación Detallada
 
@@ -74,25 +143,6 @@ Los scripts de mantenimiento y monitoreo se encuentran en el directorio `scripts
 - `Frontend/`: Interfaz de usuario
 - `docs/`: Documentación detallada
 - `scripts/`: Scripts de mantenimiento y monitoreo
-
-## Solución de Problemas Comunes
-
-1. **Los contenedores no inician**:
-```bash
-# Verificar logs
-docker compose logs
-
-# Reiniciar servicios
-docker compose down && docker compose up -d
-```
-
-2. **Error de conexión a la base de datos**:
-- Verificar que el puerto 1434 esté disponible
-- Esperar 30-60 segundos después de iniciar los contenedores para que SQL Server esté listo
-
-3. **Problemas de autenticación**:
-- Verificar las credenciales
-- Asegurarse de incluir el token en el header "Authorization"
 
 ## Contacto y Soporte
 
