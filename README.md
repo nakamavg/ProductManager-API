@@ -116,11 +116,7 @@ Los logs se almacenan en:
 - Logs de la API: `ProductosAPI/Logs/`
 - Logs de auditoría: `logs/audit/`
 
-## Documentación Adicional
-Para más información, consulta:
-- [API y Endpoints](docs/API.md)
-- [Arquitectura del Sistema](docs/ARQUITECTURA.md)
-- [Guía de Despliegue](docs/DEPLOYMENT.md)
+
 
 ## Documentación Detallada
 
